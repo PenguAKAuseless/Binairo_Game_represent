@@ -7,7 +7,7 @@ def draw_board(screen: pygame.Surface, board_size: int, board: list[list[int]]):
     screen.fill(BACKGROUND_COLOR)
 
     # Calculate the grid's top-left corner position to center it on the screen
-    board_width = board_height = board_size * (CELL_SIZE + GRID_THICKNESS) + BORDER_THICKNESS
+    board_width = board_height = board_size * (CELL_SIZE + GRID_THICKNESS) + GRID_THICKNESS
     board_x_offset = (SCREEN_WIDTH - board_width) // 2
     board_y_offset = (SCREEN_HEIGHT - board_height - BUTTON_HEIGHT - 40) // 2
 
@@ -30,9 +30,9 @@ def draw_board(screen: pygame.Surface, board_size: int, board: list[list[int]]):
     # Draw grid lines inside the board (green)
     for y in range(board_size + 1):
         pygame.draw.line(screen, GRID_COLOR, 
-                         (board_x_offset + BORDER_THICKNESS, board_y_offset + y * CELL_SIZE + BORDER_THICKNESS), 
-                         (board_x_offset + board_width - BORDER_THICKNESS, board_y_offset + y * CELL_SIZE + BORDER_THICKNESS), 2)
+                         (board_x_offset, board_y_offset + y * (CELL_SIZE + GRID_THICKNESS) + GRID_THICKNESS // 2), 
+                         (board_x_offset + board_width - 1, board_y_offset + y * (CELL_SIZE + GRID_THICKNESS) + GRID_THICKNESS // 2), GRID_THICKNESS)
     for x in range(board_size + 1):
         pygame.draw.line(screen, GRID_COLOR, 
-                         (board_x_offset + x * CELL_SIZE + BORDER_THICKNESS, board_y_offset + BORDER_THICKNESS), 
-                         (board_x_offset + x * CELL_SIZE + BORDER_THICKNESS, board_y_offset + board_height - BORDER_THICKNESS), 2)
+                         (board_x_offset + x * (CELL_SIZE + GRID_THICKNESS) + GRID_THICKNESS // 2, board_y_offset), 
+                         (board_x_offset + x * (CELL_SIZE + GRID_THICKNESS) + GRID_THICKNESS // 2, board_y_offset + board_height - 1), GRID_THICKNESS)

@@ -2,8 +2,8 @@
 CELL_SIZE = 40
 MIN_GRID_SIZE = 6
 MAX_GRID_SIZE = 20
-BORDER_THICKNESS = 5  # Border thickness around the grid
-GRID_THICKNESS = 2 # Grid line thickness
+BORDER_THICKNESS = 10  # Border thickness around the grid
+GRID_THICKNESS = 3 # Grid line thickness
 BUTTON_HEIGHT = 40  # Button height
 SCREEN_WIDTH = 1760  # Fixed screen size
 SCREEN_HEIGHT = 990  # Fixed screen size
