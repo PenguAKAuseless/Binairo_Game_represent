@@ -15,6 +15,11 @@ class Circle(pygame.sprite.Sprite):
         """Position the circle so that its center is at (x, y)."""
         self.rect.center = (x, y)
     
-    def color(self, color=TRANSPARENT):
+    def color(self, color : tuple[int] = TRANSPARENT) -> None:
         """Redraw the circle with the given color. Default is transparent."""
         pygame.draw.circle(self.image, color, (self.radius, self.radius), self.radius)
+
+    def update(self, pos: tuple[int] = (0, 0), color: tuple[int] = TRANSPARENT) -> None:
+        """Update the circle's position and color."""
+        self.set_position(*pos)
+        self.color(color)
