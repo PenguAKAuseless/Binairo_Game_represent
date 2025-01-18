@@ -19,4 +19,4 @@ BACKGROUND_COLOR = (0, 0, 255)  # Color for background area
 GRID_COLOR = (0, 255, 0)  # Grid lines between cells
 BUTTON_COLOR = (0, 128, 255)  # Color for the "NEW GAME" button
 BUTTON_TEXT_COLOR = (255, 255, 255)  # Color for text
-SQUARE_CONCRETE_COLOR = (128, 128, 128)  # Color for the square in the middle of the circle
+SQUARE_CONCRETE_COLOR = (255, 0, 0)  # Color for the square in the middle of the circle

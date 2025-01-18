@@ -8,11 +8,11 @@ from Circle import Circle
 
 class Binairo:
     class BinairoCircle(Circle): 
-        def __init__(self, radius : int = CELL_SIZE // 2, color : tuple[int] = TRANSPARENT, canUpdate : bool = False) -> None:
-            super().__init__(radius, color)
+        def __init__(self, radius : int = CELL_SIZE // 2, position: tuple[int] = (0, 0), color : tuple[int] = TRANSPARENT, canUpdate : bool = False) -> None:
+            super().__init__(radius, position, color)
             self.canUpdate = canUpdate
 
-            if canUpdate:
+            if not canUpdate:
                 # Draw a small middle square at the circle center
                 square_size = SQUARE_CONCRETE_SIZE
 
@@ -23,7 +23,7 @@ class Binairo:
                 pygame.draw.rect(self.image, SQUARE_CONCRETE_COLOR, (square_x, square_y, square_size, square_size))
 
 
-        def update(self, pos: tuple[int] = (0, 0), color: tuple[int] = TRANSPARENT) -> None:
+        def update(self, pos: tuple[int] = None, color: tuple[int] = None) -> None:
             """Update the circle's position and color."""
             if self.canUpdate:
                 super().update(pos, color)
@@ -33,20 +33,33 @@ class Binairo:
 
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Binairo")
+
+
         self._running = True
         self.board_size = MIN_BOARD_SIZE
         self.board = self.generate_binairo_board(self.board_size)
 
+        self.draw_board()
+
+        # INSERT BOARD ERASING CODE HERE
+
         self.circle_board = []
+        self.all_sprites = pygame.sprite.Group()
         for i in range(self.board_size):
             temp = []
             for j in range(self.board_size):
+                # Calculate the circle position
+                circle_x_offset = self.board_x_offset + j * (CELL_SIZE + GRID_THICKNESS) + CELL_SIZE // 2 + GRID_THICKNESS // 2 + 2
+                circle_y_offset = self.board_y_offset + i * (CELL_SIZE + GRID_THICKNESS) + CELL_SIZE // 2 + GRID_THICKNESS // 2 + 2
                 if self.board[i][j] == 1:
-                    temp.append(self.BinairoCircle(color=WHITE))
+                    temp.append(self.BinairoCircle(position=(circle_x_offset, circle_y_offset), color=WHITE))
+                    self.all_sprites.add(temp[-1])
                 elif self.board[i][j] == 0:
-                    temp.append(self.BinairoCircle(color=BLACK))
+                    temp.append(self.BinairoCircle(position=(circle_x_offset, circle_y_offset), color=BLACK))
+                    self.all_sprites.add(temp[-1])
                 else:
-                    temp.append(self.BinairoCircle(canUpdate=True))
+                    temp.append(self.BinairoCircle(position=(circle_x_offset, circle_y_offset), canUpdate=True))
+                    self.all_sprites.add(temp[-1])
             self.circle_board.append(temp)
 
     def generate_binairo_board(self, n: int) -> list[list[int]]:
@@ -180,54 +193,53 @@ class Binairo:
                 else:
                     self.circle_board[grid_y][grid_x].color = WHITE
 
-    # def validate(self):
-    #     # Check consecutive streaks of 1s or 0s
-    #     for i in range(n - 2):
-    #         for j in range(n - 2):
-    #             if board[i][j] == board[i + 1][j] and board[i + 1][j] == board[i + 2][j]:
-    #                 return False
-    #             if board[i][j] == board[i][j + 1] and board[i][j + 1] == board[i][j + 2]:
-    #                 return False
+    def validate(self):
+        # Check consecutive streaks of 1s or 0s
+        for i in range(n - 2):
+            for j in range(n - 2):
+                if board[i][j] == board[i + 1][j] and board[i + 1][j] == board[i + 2][j]:
+                    return False
+                if board[i][j] == board[i][j + 1] and board[i][j + 1] == board[i][j + 2]:
+                    return False
         
-    #     # Check row and col validity
-    #     row_set = set()
-    #     col_set = set()
-    #     for i in range(n):
-    #             if sum(board[i]) != n // 2:
-    #                 return False
-    #             row_num = int(''.join(map(str, board[i])), 2)
-    #             if row_num in row_set:
-    #                 print(row_num)
-    #                 return False
-    #             else:
-    #                 row_set.add(row_num)
+        # Check row and col validity
+        row_set = set()
+        col_set = set()
+        for i in range(n):
+                if sum(board[i]) != n // 2:
+                    return False
+                row_num = int(''.join(map(str, board[i])), 2)
+                if row_num in row_set:
+                    print(row_num)
+                    return False
+                else:
+                    row_set.add(row_num)
 
-    #     for j in range(n):
-    #             if sum(board[row][j] for row in range(n)) != n // 2:
-    #                 return False
-    #             col_num = int(''.join(map(str, [board[row][j] for row in range(n)])), 2)
-    #             if col_num in col_set:
-    #                 print("Col ", i)
-    #                 return False
-    #             else:
-    #                 col_set.add(col_num)
+        for j in range(n):
+                if sum(board[row][j] for row in range(n)) != n // 2:
+                    return False
+                col_num = int(''.join(map(str, [board[row][j] for row in range(n)])), 2)
+                if col_num in col_set:
+                    print("Col ", i)
+                    return False
+                else:
+                    col_set.add(col_num)
         
-    #     return True
+        return True
 
     def update_display(self) -> None:
         """Update the display with the current state of the board."""
         pass
-        # for y in range(self.board_size):
-        #     for x in range(self.board_size):
-        #         color = WHITE if board[y][x] == 1 else BLACK
-        #         circle = self.BinairoCircle(canUpdate=True)
-        #         circle.update((x * (CELL_SIZE + GRID_THICKNESS) + CELL_SIZE // 2, y * (CELL_SIZE + GRID_THICKNESS) + CELL_SIZE // 2), color)
-        #         self.screen.blit(circle.image, circle.rect.topleft)
+        for y in range(self.board_size):
+            for x in range(self.board_size):
+                if self.circle_board[y][x].canUpdate:
+                    color = WHITE if self.board[y][x] == 1 else BLACK
+                    self.circle_board[y][x].color(color)
+        self.all_sprites.draw(self.screen)
+
 
     def run(self) -> None:
         """Main game loop."""
-        # Draw the initial board
-        self.draw_board()
 
         for row in self.board:
             print(row)
