@@ -34,10 +34,11 @@ class Binairo:
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Binairo")
 
-
         self._running = True
+
         self.board_size = MIN_BOARD_SIZE
         self.board = self.generate_binairo_board(self.board_size)
+        self.remove_cells(self.board_size - self.board_size // 4 - 1)
 
         self.draw_board()
 
@@ -184,7 +185,7 @@ class Binairo:
         if 0 <= grid_x < self.board_size and 0 <= grid_y < self.board_size and self.circle_board[grid_y][grid_x].canUpdate:
             if button == 1:  # Left click
                 if self.circle_board[grid_y][grid_x].color == WHITE:
-                    self.circle_board[grid_y][grid_x].color = TRANSPARENT
+                    self.circle_board[grid_y][grid_x].set_color = TRANSPARENT
                 else:
                     self.circle_board[grid_y][grid_x].color = WHITE
             elif button == 3:  # Right click
@@ -195,30 +196,30 @@ class Binairo:
 
     def validate(self):
         # Check consecutive streaks of 1s or 0s
-        for i in range(n - 2):
-            for j in range(n - 2):
-                if board[i][j] == board[i + 1][j] and board[i + 1][j] == board[i + 2][j]:
+        for i in range(self.board_size - 2):
+            for j in range(self.board_size - 2):
+                if self.board[i][j] == self.board[i + 1][j] and self.board[i + 1][j] == self.board[i + 2][j]:
                     return False
-                if board[i][j] == board[i][j + 1] and board[i][j + 1] == board[i][j + 2]:
+                if self.board[i][j] == self.board[i][j + 1] and self.board[i][j + 1] == self.board[i][j + 2]:
                     return False
         
         # Check row and col validity
         row_set = set()
         col_set = set()
-        for i in range(n):
-                if sum(board[i]) != n // 2:
+        for i in range(self.board_size):
+                if sum(self.board[i]) != self.board_size // 2:
                     return False
-                row_num = int(''.join(map(str, board[i])), 2)
+                row_num = int(''.join(map(str, self.board[i])), 2)
                 if row_num in row_set:
                     print(row_num)
                     return False
                 else:
                     row_set.add(row_num)
 
-        for j in range(n):
-                if sum(board[row][j] for row in range(n)) != n // 2:
+        for j in range(self.board_size):
+                if sum(self.board[row][j] for row in range(self.board_size)) != self.board_size // 2:
                     return False
-                col_num = int(''.join(map(str, [board[row][j] for row in range(n)])), 2)
+                col_num = int(''.join(map(str, [self.board[row][j] for row in range(self.board_size)])), 2)
                 if col_num in col_set:
                     print("Col ", i)
                     return False
@@ -234,9 +235,81 @@ class Binairo:
             for x in range(self.board_size):
                 if self.circle_board[y][x].canUpdate:
                     color = WHITE if self.board[y][x] == 1 else BLACK
-                    self.circle_board[y][x].color(color)
+                    self.circle_board[y][x].set_color(color)
         self.all_sprites.draw(self.screen)
 
+    def is_valid_move(self, row: int, col: int) -> bool:
+        
+        # Check if exist streak 3 in a row at the placement
+        for i in range(3):
+            if col + i < 2 or col + i >= self.board_size:
+                continue
+            if self.board[row][col + i - 2] == self.board[row][col + i - 1] and self.board[row][col + i - 1] == self.board[row][col + i]:
+                return False
+        
+        # Check if exist streak 3 in a col at the placement
+        for i in range(3):
+            if row + i < 2 or row + i >= self.board_size:
+                continue
+            if self.board[row + i - 2][col] == self.board[row + i - 1][col] and self.board[row + i - 1][col] == self.board[row + i][col]:
+                return False
+            
+        # Check if the row contains None, if not, check if the row is valid
+        if None not in self.board[row]:
+            if sum(self.board[row]) != self.board_size // 2:
+                return False
+            for row in range(self.board_size):
+                if self.board[row] == self.board[row]:
+                    return False
+        
+        # Check if the col contains None, if not, check if the col is valid
+        if None not in [self.board[row][col] for row in range(self.board_size)]:
+            if sum([self.board[row][col] for row in range(self.board_size)]) != self.board_size // 2:
+                return False
+            for col in range(self.board_size):
+                if [self.board[row][col] for row in range(self.board_size)] == [self.board[row][col] for row in range(self.board_size)]:
+                    return False
+
+        # If all checks passed, return True
+        return True
+
+    def solve_binairo(self) -> bool:  
+        def dfs(row, col):
+            if row == self.board_size:  # If we've reached past the last row, solution found
+                return True
+            
+            next_row, next_col = (row, col + 1) if col + 1 < self.board_size else (row + 1, 0)
+            
+            if self.temp_board[row][col] != None:  # Skip pre-filled cells
+                return dfs(next_row, next_col)
+            
+            for num in [0, 1]:
+                self.temp_board[row][col] = num
+                if self.is_valid_move(row, col) and dfs(next_row, next_col):
+                    return True
+                self.temp_board[row][col] = None  # Undo move if it didn't lead to a solution
+            
+            return False
+        
+        # Copy the board to avoid modifying the original board
+        self.temp_board = [row[:] for row in self.board]
+        return dfs(0, 0)
+
+    def remove_cells(self, n: int) -> None:
+        """Remove n cells from the board."""
+        removed = 0
+        while removed < n:
+            row, col = random.randint(0, self.board_size - 1), random.randint(0, self.board_size - 1)
+            if self.board[row][col] != None:
+                self.board[row][col] = 1 - self.board[row][col]
+                if not self.is_valid_move(row, col):
+                    self.board[row][col] = None
+                    removed += 1
+                    continue
+                if not self.solve_binairo():
+                    self.board[row][col] = None
+                    removed += 1
+                    continue
 
     def run(self) -> None:
         """Main game loop."""

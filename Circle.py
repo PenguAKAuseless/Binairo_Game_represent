@@ -6,6 +6,7 @@ class Circle(pygame.sprite.Sprite):
         """Create a circle with the given radius and color."""
         super().__init__()
         self.radius = radius
+        self.color = color
         diameter = 2 * radius
         self.image = pygame.Surface((diameter, diameter), pygame.SRCALPHA)
         pygame.draw.circle(self.image, color, (radius, radius), radius)
@@ -16,7 +17,7 @@ class Circle(pygame.sprite.Sprite):
         """Position the circle so that its center is at (x, y)."""
         self.rect.center = position
     
-    def color(self, color: tuple[int] = TRANSPARENT) -> None:
+    def set_color(self, color: tuple[int] = TRANSPARENT) -> None:
         """Redraw the circle with the given color."""
         self.image.fill(TRANSPARENT)  # Clear the image with transparency
         pygame.draw.circle(self.image, color, (self.radius, self.radius), self.radius)
@@ -26,4 +27,4 @@ class Circle(pygame.sprite.Sprite):
         if pos:  # Only set position if a new one is provided
             self.set_position(pos)
         if color:  # Only update color if a new one is provided
-            self.color(color)
+            self.set_color(color)
