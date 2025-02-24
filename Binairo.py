@@ -266,18 +266,22 @@ class Binairo:
                             print("No solution")    
                     else:
                         print("Compare solver...")
+                        dfs_time, heu_time = -1, -1
                         print("Solving using dfs...")
-                        if self.solve_binairo(trace = False, measure = True, mode = "dfs"):
+                        if self.solve_binairo(trace = True, measure = True, mode = "dfs"):
                             print("Solution found")
-                            print(f"Time used: {self.end_time - self.start_time}")
+                            dfs_time = self.end_time - self.start_time
                         else:
                             print("No solution")
                         print("Solving using heuristic...")
-                        if self.solve_binairo(trace = False, measure = True, mode = "heuristic"):
+                        if self.solve_binairo(trace = True, measure = True, mode = "heuristic"):
                             print("Solution found")
-                            print(f"Time used: {self.end_time - self.start_time}")
+                            heu_time = self.end_time - self.start_time
                         else:
                             print("No solution")
+                        if dfs_time != -1 and heu_time != -1:
+                            print(f"DFS runtime: {dfs_time}")
+                            print(f"Heuristic runtime: {heu_time}")
                 else:
                     self.board_size = action
                     self.board = self.generate_binairo_board(self.board_size)
