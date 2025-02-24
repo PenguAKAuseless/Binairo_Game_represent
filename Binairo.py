@@ -43,8 +43,6 @@ class Binairo:
 
         self.draw_board()
 
-        # INSERT BOARD ERASING CODE HERE
-
         self.circle_board = []
         self.all_sprites = pygame.sprite.Group()
         for i in range(self.board_size):
@@ -152,10 +150,6 @@ class Binairo:
         if not backtrack(0, 0):
             raise ValueError("No solution found for the given board size.")
         
-        # Print the board for debugging
-        for row in board:
-            print(row)
-        
         return board
 
     def draw_board(self) -> None:
@@ -194,25 +188,27 @@ class Binairo:
                             (self.board_x_offset + x * (CELL_SIZE + GRID_THICKNESS) + GRID_THICKNESS // 2, self.board_y_offset), 
                             (self.board_x_offset + x * (CELL_SIZE + GRID_THICKNESS) + GRID_THICKNESS // 2, self.board_y_offset + self.board_height - 1), GRID_THICKNESS)
 
-        # Draw new game buttons for 6x6, 8x8, 10x10, 14x14 and 20x20; an auto solver button    
+        # Draw new game buttons for 6x6, 8x8, 10x10, 14x14, 20x20; SOLVE DFS, SOLVE HEURISTIC, COMPARE
         # Define button properties
-        button_width = 100
+        button_width = 200
         button_height = BUTTON_HEIGHT
         button_margin = 10
-        button_x = (SCREEN_WIDTH - (button_width * 5 + button_margin * 4)) // 2
+        button_x = (SCREEN_WIDTH - (button_width * 8 + button_margin * 7)) // 2
         button_y = self.board_y_offset + self.board_height + 20
 
         # Define button labels and actions
-        buttons = [
+        self.buttons = [
             ("6x6", 6),
             ("8x8", 8),
             ("10x10", 10),
             ("14x14", 14),
             ("20x20", 20),
-            ("Solve", "solve")
+            ("SOLVE DFS", "solve_dfs"),
+            ("SOLVE HEU", "solve_heuristic"),
+            ("COMPARE", "compare")
         ]
 
-        for i, (label, action) in enumerate(buttons):
+        for i, (label, action) in enumerate(self.buttons):
             rect = pygame.Rect(button_x + i * (button_width + button_margin), button_y, button_width, button_height)
             pygame.draw.rect(self.screen, BUTTON_COLOR, rect)
             pygame.draw.rect(self.screen, BUTTON_COLOR, rect, 2)
@@ -236,23 +232,52 @@ class Binairo:
 
     def handle_button_click(self, pos: tuple[int]) -> None:
         """Handle the button click event."""
-        for label, action in [("6x6", 6), ("8x8", 8), ("10x10", 10), ("14x14", 14), ("20x20", 20), ("Solve", "solve")]:
+        for label, action in self.buttons:
             rect, action = getattr(self, f"button_{label}")
             if rect.collidepoint(pos):
-                if action == "solve":
-                    print("Solving...")
-                    if self.solve_binairo(trace = True, measure = True):
-                        print("Solution found")
-                        print("Current board state:")
-                        for r in self.temp_board:
-                            print(r)
-                        print(f"Time used: {self.end_time - self.start_time}")
-                        self.board = self.temp_board
-                        self.update_board_sprite()
-                        self.draw_board()
-                        self.update_display()
+                if action in ["solve_dfs", "solve_heuristic", "compare"]:
+                    if action == "solve_dfs":
+                        print("Solving using dfs...")
+                        if self.solve_binairo(trace = True, measure = True, mode = "dfs"):
+                            print("Solution found")
+                            print("Current board state:")
+                            for r in self.temp_board:
+                                print(r)
+                            print(f"Time used: {self.end_time - self.start_time}")
+                            self.board = self.temp_board
+                            self.update_board_sprite()
+                            self.draw_board()
+                            self.update_display()
+                        else:
+                            print("No solution")
+                    elif action == "solve_heuristic":
+                        print("Solving using heuristic...")
+                        if self.solve_binairo(trace = True, measure = True, mode = "heuristic"):
+                            print("Solution found")
+                            print("Current board state:")
+                            for r in self.temp_board:
+                                print(r)
+                            print(f"Time used: {self.end_time - self.start_time}")
+                            self.board = self.temp_board
+                            self.update_board_sprite()
+                            self.draw_board()
+                            self.update_display()
+                        else:
+                            print("No solution")    
                     else:
-                        print("No solution")
+                        print("Compare solver...")
+                        print("Solving using dfs...")
+                        if self.solve_binairo(trace = False, measure = True, mode = "dfs"):
+                            print("Solution found")
+                            print(f"Time used: {self.end_time - self.start_time}")
+                        else:
+                            print("No solution")
+                        print("Solving using heuristic...")
+                        if self.solve_binairo(trace = False, measure = True, mode = "heuristic"):
+                            print("Solution found")
+                            print(f"Time used: {self.end_time - self.start_time}")
+                        else:
+                            print("No solution")
                 else:
                     self.board_size = action
                     self.board = self.generate_binairo_board(self.board_size)
