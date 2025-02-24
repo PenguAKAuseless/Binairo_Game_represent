@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+import time
 
 from constants import *
 from Circle import Circle
@@ -64,66 +65,97 @@ class Binairo:
             self.circle_board.append(temp)
 
     def generate_binairo_board(self, n: int) -> list[list[int]]:
-        # Init board
-        board = [[None for _ in range(n)] for _ in range(n)]
+        if n % 2 != 0:
+            raise ValueError("Board size must be even.")
 
-        # Init trace board
-        trace_board = [[False for _ in range(n)] for _ in range(n)]
+        # Init board with -1 to indicate empty cells
+        board = [[-1 for _ in range(n)] for _ in range(n)]
 
-        # Init counter to keep track of board constructor
-        count = 0
-
-        # Function to check streak of 0s 1s
+        # Function to check streak of 0s and 1s
         def check_streak(i, j, board) -> bool:
-            if j >= 2 and board[i][j - 2] == board[i][j - 1] and board[i][j - 1] == board[i][j]:
+            # Check row streaks
+            if j >= 2 and board[i][j] == board[i][j-1] == board[i][j-2]:
                 return False
-            if i >= 2 and board[i - 2][j] == board[i - 1][j] and board[i - 1][j] == board[i][j]:
+            if j < n - 2 and board[i][j] == board[i][j+1] == board[i][j+2]:
                 return False
+            if 0 < j < n - 1 and board[i][j] == board[i][j-1] == board[i][j+1]:
+                return False
+            
+            # Check column streaks
+            if i >= 2 and board[i][j] == board[i-1][j] == board[i-2][j]:
+                return False
+            if i < n - 2 and board[i][j] == board[i+1][j] == board[i+2][j]:
+                return False
+            if 0 < i < n - 1 and board[i][j] == board[i-1][j] == board[i+1][j]:
+                return False
+            
             return True
 
+        # Function to check count of 0s and 1s
         def check_count(i, j, board) -> bool:
-            if j == n - 1 and sum(board[i]) != n // 2:
+            # Check row counts
+            if board[i].count(0) > n // 2 or board[i].count(1) > n // 2:
                 return False
-            if i == n - 1 and sum(board[row][j] for row in range(n)) != n // 2:
+            
+            # Check column counts
+            col_count_0 = sum(board[row][j] == 0 for row in range(n))
+            col_count_1 = sum(board[row][j] == 1 for row in range(n))
+            if col_count_0 > n // 2 or col_count_1 > n // 2:
                 return False
+            
             return True
-        
-        def check_unique(i, j, board) -> bool:
-            # Check row
-            if j == n - 1 and i != 0:
-                for row in range(i):
-                    if board[i] == board[row]:
-                        return False
 
-            # Check col
-            if i == n - 1 and j != 0:
-                for col in range(j):
-                    if [board[row][j] for row in range(n)] == [board[row][col] for row in range(n)]:
+        # Function to check uniqueness of rows and columns
+        def check_unique(i, j, board) -> bool:
+            # Check row uniqueness if row is fully filled
+            if -1 not in board[i]:
+                for row in range(n):
+                    if row != i and board[row] == board[i]:
                         return False
             
-            # Passed both, return True
+            # Check column uniqueness if column is fully filled
+            current_col = [board[row][j] for row in range(n)]
+            if -1 not in current_col:
+                for col in range(n):
+                    if col != j:
+                        other_col = [board[row][col] for row in range(n)]
+                        if other_col == current_col:
+                            return False
+            
             return True
+
+        # Backtracking function to fill the board
+        def backtrack(i, j):
+            # If reached end of board, solution is found
+            if i == n:
+                return True
+            
+            # Determine next cell to fill
+            next_i = i + (j + 1) // n
+            next_j = (j + 1) % n
+            
+            # Try placing 0 and 1
+            for num in [0, 1]:
+                board[i][j] = num
+                
+                # Check all conditions
+                if check_streak(i, j, board) and check_count(i, j, board) and check_unique(i, j, board):
+                    if backtrack(next_i, next_j):
+                        return True
+                
+                # Undo choice (backtrack)
+                board[i][j] = -1
+            
+            return False
+
+        # Start backtracking from the first cell
+        if not backtrack(0, 0):
+            raise ValueError("No solution found for the given board size.")
         
-        while count < n * n:
-            i, j = count // n, count % n
-            # If trace True, erase trace and board, then go back one cell
-            if trace_board[i][j] == True:
-                trace_board[i][j] = False
-                board[i][j] = None
-                count -= 1
-                continue
-
-            # If board[i][j] already has a value, flip it and mark trace True, else random it
-            if board[i][j] != None:
-                board[i][j] = 1 - board[i][j]
-                trace_board[i][j] = True
-            else:
-                board[i][j] = random.randint(0, 1)
-
-            # Check all condition
-            if check_streak(i, j, board) and check_count(i, j, board) and check_unique(i, j, board):
-                count += 1
-
+        # Print the board for debugging
+        for row in board:
+            print(row)
+        
         return board
 
     def draw_board(self) -> None:
@@ -209,11 +241,12 @@ class Binairo:
             if rect.collidepoint(pos):
                 if action == "solve":
                     print("Solving...")
-                    if self.solve_binairo():
+                    if self.solve_binairo(trace = True, measure = True):
                         print("Solution found")
                         print("Current board state:")
                         for r in self.temp_board:
                             print(r)
+                        print(f"Time used: {self.end_time - self.start_time}")
                         self.board = self.temp_board
                         self.update_board_sprite()
                         self.draw_board()
@@ -358,9 +391,11 @@ class Binairo:
         # If all checks passed, return True
         return True
 
-    def solve_binairo(self) -> bool:  
+    def solve_binairo(self, trace : bool = False, measure : bool = False, mode : str = "heuristic") -> bool:  
         def dfs(row, col):
             if row == self.board_size:  # If we've reached past the last row, solution found
+                if measure:
+                    self.end_time = time.time()
                 return True
             
             next_row, next_col = (row, col + 1) if col + 1 < self.board_size else (row + 1, 0)
@@ -369,33 +404,142 @@ class Binairo:
                 return dfs(next_row, next_col)
             
             for num in [0, 1]:
-                print(f"Trying {num} at ({row}, {col})")
+                if trace:
+                    print(f"Trying {num} at ({row}, {col})")
                 self.temp_board[row][col] = num
                 if self.is_valid_move(self.temp_board, row, col) and dfs(next_row, next_col):
                     return True
                 self.temp_board[row][col] = None  # Undo move if it didn't lead to a solution
             
             return False
+    
+        # Helper function to count occurrences of 0s and 1s in a row or column
+        def count_occurrences(line):
+            return line.count(0), line.count(1)
+        
+        # Logical move application
+        def apply_logical_moves():
+            progress = True
+            while progress:
+                progress = False
+                for row in range(self.board_size):
+                    for col in range(self.board_size):
+                        if self.temp_board[row][col] is None:
+                            # Check neighbors to apply logical rules
+                            neighbors = []
+                            if col > 1:
+                                neighbors.append(self.temp_board[row][col-2:col+1])
+                            if col < self.board_size - 2:
+                                neighbors.append(self.temp_board[row][col:col+3])
+                            if row > 1:
+                                neighbors.append([self.temp_board[r][col] for r in range(row-2, row+1)])
+                            if row < self.board_size - 2:
+                                neighbors.append([self.temp_board[r][col] for r in range(row, row+3)])
+                            
+                            for group in neighbors:
+                                if group.count(0) == 2 and None in group:
+                                    self.temp_board[row][col] = 1
+                                    progress = True
+                                elif group.count(1) == 2 and None in group:
+                                    self.temp_board[row][col] = 0
+                                    progress = True
+                            
+                            # Check row and column balance
+                            row_zeros, row_ones = count_occurrences(self.temp_board[row])
+                            col_values = [self.temp_board[r][col] for r in range(self.board_size)]
+                            col_zeros, col_ones = count_occurrences(col_values)
+                            
+                            if row_zeros == self.board_size // 2:
+                                for c in range(self.board_size):
+                                    if self.temp_board[row][c] is None:
+                                        self.temp_board[row][c] = 1
+                                        progress = True
+                            if row_ones == self.board_size // 2:
+                                for c in range(self.board_size):
+                                    if self.temp_board[row][c] is None:
+                                        self.temp_board[row][c] = 0
+                                        progress = True
+                            if col_zeros == self.board_size // 2:
+                                for r in range(self.board_size):
+                                    if self.temp_board[r][col] is None:
+                                        self.temp_board[r][col] = 1
+                                        progress = True
+                            if col_ones == self.board_size // 2:
+                                for r in range(self.board_size):
+                                    if self.temp_board[r][col] is None:
+                                        self.temp_board[r][col] = 0
+                                        progress = True
+
+        # Heuristic DFS with prioritized cells
+        def heuristic_dfs():
+            # Apply logical moves before DFS
+            apply_logical_moves()
+            
+            # Find the most constrained empty cell
+            min_options = float('inf')
+            best_cell = None
+            for row in range(self.board_size):
+                for col in range(self.board_size):
+                    if self.temp_board[row][col] is None:
+                        options = 0
+                        for num in [0, 1]:
+                            self.temp_board[row][col] = num
+                            if self.is_valid_move(self.temp_board, row, col):
+                                options += 1
+                        self.temp_board[row][col] = None  # Undo
+                        if options < min_options:
+                            min_options = options
+                            best_cell = (row, col)
+            
+            # If no empty cells, solution found
+            if best_cell is None:
+                self.end_time = time.time()
+                return True
+            
+            row, col = best_cell
+            for num in [0, 1]:
+                if trace:
+                    print(f"Trying {num} at ({row}, {col})")
+                self.temp_board[row][col] = num
+                if self.is_valid_move(self.temp_board, row, col) and heuristic_dfs():
+                    return True
+                self.temp_board[row][col] = None  # Undo move
+            
+            return False
         
         # Copy the board to avoid modifying the original board
         self.temp_board = [row[:] for row in self.board]
-        return dfs(0, 0)
+        if measure:
+            self.start_time = time.time()
+        if mode == "dfs":
+            return dfs(0, 0)
+        else:    
+            return heuristic_dfs()
 
     def remove_cells(self, n: int) -> None:
         """Remove n cells from the board."""
         removed = 0
-        while removed < n:
+        attempts = 0
+        max_attempts = n * 10  # To prevent infinite loops
+        
+        while removed < n and attempts < max_attempts:
             row, col = random.randint(0, self.board_size - 1), random.randint(0, self.board_size - 1)
-            if self.board[row][col] != None:
-                self.board[row][col] = 1 - self.board[row][col]
-                if not self.is_valid_move(self.board, row, col):
-                    self.board[row][col] = None
+            if self.board[row][col] is not None:  # Check if the cell is not already empty
+                original_value = self.board[row][col]
+                self.board[row][col] = None  # Temporarily remove the cell
+                
+                # Check if the board is still valid and uniquely solvable
+                if self.is_valid_move(self.board, row, col) and self.solve_binairo():
                     removed += 1
-                    continue
-                if not self.solve_binairo():
-                    self.board[row][col] = None
-                    removed += 1
-                    continue
+                else:
+                    # If invalid or no solution, restore the original value
+                    self.board[row][col] = original_value
+            
+            attempts += 1
+        
+        if attempts >= max_attempts:
+            print(f"Warning: Maximum attempts reached. Only {removed} cells were removed.")
+
 
     def run(self) -> None:
         """Main game loop."""
@@ -409,4 +553,3 @@ class Binairo:
                 self.handle_events(event)
             self.update_display()
             pygame.display.flip()
-
