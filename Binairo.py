@@ -38,7 +38,7 @@ class Binairo:
 
         self.board_size = MIN_BOARD_SIZE
         self.board = self.generate_binairo_board(self.board_size)
-        self.remove_cells(self.board_size - self.board_size // 4 - 1)
+        self.remove_cells(self.board_size * self.board_size * 3 // 4- 1)
 
         self.draw_board()
 
@@ -161,6 +161,37 @@ class Binairo:
             pygame.draw.line(self.screen, GRID_COLOR, 
                             (self.board_x_offset + x * (CELL_SIZE + GRID_THICKNESS) + GRID_THICKNESS // 2, self.board_y_offset), 
                             (self.board_x_offset + x * (CELL_SIZE + GRID_THICKNESS) + GRID_THICKNESS // 2, self.board_y_offset + self.board_height - 1), GRID_THICKNESS)
+
+        # Draw new game buttons for 6x6, 8x8, 10x10, 14x14 and 20x20; an auto solver button    
+        # Define button properties
+        button_width = 100
+        button_height = BUTTON_HEIGHT
+        button_margin = 10
+        button_x = (SCREEN_WIDTH - (button_width * 5 + button_margin * 4)) // 2
+        button_y = self.board_y_offset + self.board_height + 20
+
+        # Define button labels and actions
+        buttons = [
+            ("6x6", 6),
+            ("8x8", 8),
+            ("10x10", 10),
+            ("14x14", 14),
+            ("20x20", 20),
+            ("Solve", "solve")
+        ]
+
+        for i, (label, action) in enumerate(buttons):
+            rect = pygame.Rect(button_x + i * (button_width + button_margin), button_y, button_width, button_height)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, rect)
+            pygame.draw.rect(self.screen, BUTTON_COLOR, rect, 2)
+
+            font = pygame.font.Font(None, 36)
+            text = font.render(label, True, BUTTON_TEXT_COLOR)
+            text_rect = text.get_rect(center=rect.center)
+            self.screen.blit(text, text_rect)
+
+            # Store button rect and action for event handling
+            setattr(self, f"button_{label}", (rect, action))
             
     def handle_events(self, event: pygame.event.Event) -> None:
         """Handle the event based on the event type."""
@@ -171,7 +202,49 @@ class Binairo:
             if event.button in [1, 3]:  # Left or right mouse button
                 self.handle_click(event.pos, event.button)
 
-    def handle_click(self, pos : tuple[int], button: int) -> None:
+    def handle_button_click(self, pos: tuple[int]) -> None:
+        """Handle the button click event."""
+        for label, action in [("6x6", 6), ("8x8", 8), ("10x10", 10), ("14x14", 14), ("20x20", 20), ("Solve", "solve")]:
+            rect, action = getattr(self, f"button_{label}")
+            if rect.collidepoint(pos):
+                if action == "solve":
+                    print("Solving...")
+                    if self.solve_binairo():
+                        print("Solution found")
+                        print("Current board state:")
+                        for r in self.temp_board:
+                            print(r)
+                        self.board = self.temp_board
+                        self.update_board_sprite()
+                        self.draw_board()
+                        self.update_display()
+                    else:
+                        print("No solution")
+                else:
+                    self.board_size = action
+                    self.board = self.generate_binairo_board(self.board_size)
+                    self.remove_cells(self.board_size * self.board_size * 3 // 4 - 1)
+                    self.draw_board()
+                    self.circle_board = []
+                    self.all_sprites = pygame.sprite.Group()
+                    for i in range(self.board_size):
+                        temp = []
+                        for j in range(self.board_size):
+                            circle_x_offset = self.board_x_offset + j * (CELL_SIZE + GRID_THICKNESS) + CELL_SIZE // 2 + GRID_THICKNESS // 2 + 2
+                            circle_y_offset = self.board_y_offset + i * (CELL_SIZE + GRID_THICKNESS) + CELL_SIZE // 2 + GRID_THICKNESS // 2 + 2
+                            if self.board[i][j] == 1:
+                                temp.append(self.BinairoCircle(position=(circle_x_offset, circle_y_offset), color=WHITE))
+                                self.all_sprites.add(temp[-1])
+                            elif self.board[i][j] == 0:
+                                temp.append(self.BinairoCircle(position=(circle_x_offset, circle_y_offset), color=BLACK))
+                                self.all_sprites.add(temp[-1])
+                            else:
+                                temp.append(self.BinairoCircle(position=(circle_x_offset, circle_y_offset), canUpdate=True))
+                                self.all_sprites.add(temp[-1])
+                        self.circle_board.append(temp)
+
+    # Update the handle_click method to include button click handling
+    def handle_click(self, pos: tuple[int], button: int) -> None:
         """Handle the user click to toggle between 0 and 1 based on the mouse button."""
         x, y = pos
 
@@ -185,14 +258,21 @@ class Binairo:
         if 0 <= grid_x < self.board_size and 0 <= grid_y < self.board_size and self.circle_board[grid_y][grid_x].canUpdate:
             if button == 1:  # Left click
                 if self.circle_board[grid_y][grid_x].color == WHITE:
-                    self.circle_board[grid_y][grid_x].set_color = TRANSPARENT
+                    self.circle_board[grid_y][grid_x].set_color(BOARD_COLOR)
+                    self.board[grid_y][grid_x] = None
                 else:
-                    self.circle_board[grid_y][grid_x].color = WHITE
+                    self.circle_board[grid_y][grid_x].set_color(WHITE)
+                    self.board[grid_y][grid_x] = 1
             elif button == 3:  # Right click
                 if self.circle_board[grid_y][grid_x].color == BLACK:
-                    self.circle_board[grid_y][grid_x].color = TRANSPARENT
+                    self.circle_board[grid_y][grid_x].set_color(BOARD_COLOR)
+                    self.board[grid_y][grid_x] = None
                 else:
-                    self.circle_board[grid_y][grid_x].color = WHITE
+                    self.circle_board[grid_y][grid_x].set_color(BLACK)
+                    self.board[grid_y][grid_x] = 0
+
+        # Handle click on button
+        self.handle_button_click(pos)
 
     def validate(self):
         # Check consecutive streaks of 1s or 0s
@@ -230,44 +310,49 @@ class Binairo:
 
     def update_display(self) -> None:
         """Update the display with the current state of the board."""
-        pass
-        for y in range(self.board_size):
-            for x in range(self.board_size):
-                if self.circle_board[y][x].canUpdate:
-                    color = WHITE if self.board[y][x] == 1 else BLACK
-                    self.circle_board[y][x].set_color(color)
         self.all_sprites.draw(self.screen)
 
-    def is_valid_move(self, row: int, col: int) -> bool:
+    # Update sprite board according to self.board
+    def update_board_sprite(self): 
+        for i in range(self.board_size):
+            for j in range(self.board_size):
+                circle = self.circle_board[i][j]
+                if circle.canUpdate == False:
+                    continue
+                if self.board[i][j] == 1:
+                    circle.set_color(WHITE)
+                elif self.board[i][j] == 0:
+                    circle.set_color(BLACK)
+                else:
+                    circle.set_color(BOARD_COLOR)
+
+    def is_valid_move(self, board: list[list[int]], row: int, col: int) -> bool:
         
-        # Check if exist streak 3 in a row at the placement
-        for i in range(3):
-            if col + i < 2 or col + i >= self.board_size:
-                continue
-            if self.board[row][col + i - 2] == self.board[row][col + i - 1] and self.board[row][col + i - 1] == self.board[row][col + i]:
+        # Check row streaks
+        for i in range(max(0, col-2), min(self.board_size-3, col)+1):
+            if board[row][i] == board[row][i+1] == board[row][i+2] != None:
                 return False
-        
-        # Check if exist streak 3 in a col at the placement
-        for i in range(3):
-            if row + i < 2 or row + i >= self.board_size:
-                continue
-            if self.board[row + i - 2][col] == self.board[row + i - 1][col] and self.board[row + i - 1][col] == self.board[row + i][col]:
+
+        # Check column streaks
+        for i in range(max(0, row-2), min(self.board_size-3, row)+1):
+            if board[i][col] == board[i+1][col] == board[i+2][col] != None:
                 return False
             
-        # Check if the row contains None, if not, check if the row is valid
-        if None not in self.board[row]:
-            if sum(self.board[row]) != self.board_size // 2:
+        # Check if the row is fully populated before validating
+        if None not in board[row]:
+            if sum(board[row]) != self.board_size // 2:
                 return False
-            for row in range(self.board_size):
-                if self.board[row] == self.board[row]:
+            for otherRow in range(self.board_size):
+                if otherRow != row and board[otherRow] == board[row]:
                     return False
         
-        # Check if the col contains None, if not, check if the col is valid
-        if None not in [self.board[row][col] for row in range(self.board_size)]:
-            if sum([self.board[row][col] for row in range(self.board_size)]) != self.board_size // 2:
+        # Check if the column is fully populated before validating
+        col_values = [board[r][col] for r in range(self.board_size)]
+        if None not in col_values:
+            if sum(col_values) != self.board_size // 2:
                 return False
-            for col in range(self.board_size):
-                if [self.board[row][col] for row in range(self.board_size)] == [self.board[row][col] for row in range(self.board_size)]:
+            for otherCol in range(self.board_size):
+                if otherCol != col and [board[r][otherCol] for r in range(self.board_size)] == col_values:
                     return False
 
         # If all checks passed, return True
@@ -284,8 +369,9 @@ class Binairo:
                 return dfs(next_row, next_col)
             
             for num in [0, 1]:
+                print(f"Trying {num} at ({row}, {col})")
                 self.temp_board[row][col] = num
-                if self.is_valid_move(row, col) and dfs(next_row, next_col):
+                if self.is_valid_move(self.temp_board, row, col) and dfs(next_row, next_col):
                     return True
                 self.temp_board[row][col] = None  # Undo move if it didn't lead to a solution
             
@@ -302,7 +388,7 @@ class Binairo:
             row, col = random.randint(0, self.board_size - 1), random.randint(0, self.board_size - 1)
             if self.board[row][col] != None:
                 self.board[row][col] = 1 - self.board[row][col]
-                if not self.is_valid_move(row, col):
+                if not self.is_valid_move(self.board, row, col):
                     self.board[row][col] = None
                     removed += 1
                     continue
@@ -323,3 +409,4 @@ class Binairo:
                 self.handle_events(event)
             self.update_display()
             pygame.display.flip()
+

@@ -20,6 +20,7 @@ class Circle(pygame.sprite.Sprite):
     def set_color(self, color: tuple[int] = TRANSPARENT) -> None:
         """Redraw the circle with the given color."""
         self.image.fill(TRANSPARENT)  # Clear the image with transparency
+        self.color = color
         pygame.draw.circle(self.image, color, (self.radius, self.radius), self.radius)
 
     def update(self, pos: tuple[int] = None, color: tuple[int] = None) -> None:
