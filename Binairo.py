@@ -2,6 +2,7 @@ import pygame
 import sys
 import random
 import time
+import tracemalloc
 
 from constants import *
 from Circle import Circle
@@ -39,7 +40,7 @@ class Binairo:
 
         self.board_size = MIN_BOARD_SIZE
         self.board = self.generate_binairo_board(self.board_size)
-        self.remove_cells(self.board_size * self.board_size * 3 // 4- 1)
+        self.remove_cells(self.board_size * self.board_size * 3 // 4 + 1)
 
         self.draw_board()
 
@@ -267,6 +268,8 @@ class Binairo:
                             for r in self.temp_board:
                                 print(r)
                             print(f"Time used: {self.end_time - self.start_time}")
+                            print(f"Current memory usage: {self.current / 10**6} MB")
+                            print(f"Peak memory usage: {self.peak / 10**6} MB")
                             self.update_board_sprite(self.temp_board)
                             self.draw_board()
                             self.update_display()
@@ -281,6 +284,8 @@ class Binairo:
                             for r in self.temp_board:
                                 print(r)
                             print(f"Time used: {self.end_time - self.start_time}")
+                            print(f"Current memory usage: {self.current / 10**6} MB")
+                            print(f"Peak memory usage: {self.peak / 10**6} MB")
                             self.update_board_sprite(self.temp_board)
                             self.draw_board()
                             self.update_display()
@@ -302,7 +307,7 @@ class Binairo:
                         return True
                     if action == "step_heuristic":
                         print("Solving step by step using heuristic...")
-                        if self.solve_binairo_step_by_step(t = 1000, mode = "heuristic"):
+                        if self.solve_binairo_step_by_step(t = 100, mode = "heuristic"):
                             print("Solution found")
                             print("Current board state:")
                             for r in self.temp_board:
@@ -319,23 +324,31 @@ class Binairo:
                         print("Solving using dfs...")
                         if self.solve_binairo(trace = True, measure = True, mode = "dfs"):
                             print("Solution found")
+                            currentDFS, peakDFS = self.current, self.peak
                             dfs_time = self.end_time - self.start_time
                         else:
                             print("No solution")
                         print("Solving using heuristic...")
                         if self.solve_binairo(trace = True, measure = True, mode = "heuristic"):
                             print("Solution found")
+                            currentHeu, peakHeu = self.current, self.peak
                             heu_time = self.end_time - self.start_time
                         else:
                             print("No solution")
                         if dfs_time != -1 and heu_time != -1:
+                            print("-------------------DFS-------------------")
                             print(f"DFS runtime: {dfs_time}")
+                            print(f"Memory usage: {currentDFS / 10**6} MB")
+                            print(f"Peak memory usage: {peakDFS / 10**6} MB")
+                            print("----------------Heuristic----------------")
                             print(f"Heuristic runtime: {heu_time}")
+                            print(f"Memory usage: {currentHeu / 10**6} MB")
+                            print(f"Peak memory usage: {peakHeu / 10**6} MB")
                     return True
                 else:
                     self.board_size = action
                     self.board = self.generate_binairo_board(self.board_size)
-                    self.remove_cells(self.board_size * self.board_size * 3 // 4 - 1)
+                    self.remove_cells(self.board_size * self.board_size * 3 // 4 + 1)
                     self.draw_board()
                     self.circle_board = []
                     self.all_sprites = pygame.sprite.Group()
@@ -393,7 +406,7 @@ class Binairo:
             self.draw_board()
             self.update_display()
 
-    def validate(self):
+    def validate(self) -> bool:
         # Check consecutive streaks of 1s or 0s
         for i in range(self.board_size - 2):
             for j in range(self.board_size - 2):
@@ -406,14 +419,16 @@ class Binairo:
         row_set = set()
         col_set = set()
         for i in range(self.board_size):
-                if sum(self.board[i]) != self.board_size // 2:
-                    return False
-                row_num = int(''.join(map(str, self.board[i])), 2)
-                if row_num in row_set:
-                    print(row_num)
-                    return False
-                else:
-                    row_set.add(row_num)
+            if None in self.board[i]:
+                return True
+            if sum(self.board[i]) != self.board_size // 2:
+                return False
+            row_num = int(''.join(map(str, self.board[i])), 2)
+            if row_num in row_set:
+                print(row_num)
+                return False
+            else:
+                row_set.add(row_num)
 
         for j in range(self.board_size):
                 if sum(self.board[row][j] for row in range(self.board_size)) != self.board_size // 2:
@@ -481,6 +496,7 @@ class Binairo:
         def dfs(row, col):
             if row == self.board_size:  # If we've reached past the last row, solution found
                 if measure:
+                    self.current, self.peak = tracemalloc.get_traced_memory()
                     self.end_time = time.time()
                 return True
             
@@ -577,10 +593,11 @@ class Binairo:
 
         # Heuristic DFS with prioritized cells
         def heuristic_dfs():
+            temp_board = self.temp_board
             # Apply logical moves before DFS
             apply_logical_moves()
             
-            # Find the most constrained empty cell
+            # Find  empty cell
             move = None
             for row in range(self.board_size):
                 for col in range(self.board_size):
@@ -592,6 +609,7 @@ class Binairo:
             
             # If no empty cells, solution found
             if move is None:
+                self.current, self.peak = tracemalloc.get_traced_memory()
                 self.end_time = time.time()
                 return True
             
@@ -600,16 +618,18 @@ class Binairo:
                 if trace:
                     print(f"Trying {num} at ({row}, {col})")
                 self.temp_board[row][col] = num
-                if self.is_valid_move(self.temp_board, row, col) and heuristic_dfs():
+                if self.is_valid_move(self.temp_board, row, col) and heuristic_dfs() and self.validate():
                     return True
                 self.temp_board[row][col] = None  # Undo move
             
+            self.temp_board = temp_board
             return False
         
         # Copy the board to avoid modifying the original board
         self.temp_board = [row[:] for row in self.board]
         if measure:
             self.start_time = time.time()
+            tracemalloc.start()
         if mode == "dfs":
             return dfs(0, 0)
         else:    
@@ -626,6 +646,7 @@ class Binairo:
                 return dfs(next_row, next_col)
             
             for num in [0, 1]:
+                print(f"Trying {num} at ({row}, {col})")
                 self.temp_board[row][col] = num
                 if self.is_valid_move(self.temp_board, row, col):
                     self.update_board_sprite(self.temp_board)
@@ -647,6 +668,7 @@ class Binairo:
                 while progress:
                     self.update_board_sprite(self.temp_board)
                     self.update_display()
+                    pygame.display.flip()
                     time.sleep(t / 1000.0)
                     progress = False
                     for row in range(self.board_size):
@@ -710,6 +732,8 @@ class Binairo:
                                             self.temp_board[r][col] = 0
                                             progress = True
 
+            temp_board = self.temp_board
+
             apply_logical_moves()
             
             move = None
@@ -726,22 +750,24 @@ class Binairo:
             
             row, col = move
             for num in [0, 1]:
-                self.temp_board[row][col] = num
+                print(f"Trying {num} at ({row}, {col})")
                 self.update_board_sprite(self.temp_board)
                 self.update_display()
+                pygame.display.flip()
                 time.sleep(t / 1000.0)
-                print(f"Trying {num} at ({row}, {col})")
-                if self.is_valid_move(self.temp_board, row, col) and heuristic_dfs():
-                        return True
+                self.temp_board[row][col] = num
+                if self.is_valid_move(self.temp_board, row, col) and heuristic_dfs() and self.validate():
+                    return True
                 self.temp_board[row][col] = None
             
+            self.temp_board = temp_board
             return False
 
         self.temp_board = [row[:] for row in self.board]
         if mode == "dfs":
-            dfs(0, 0)
+            return dfs(0, 0)
         else:
-            heuristic_dfs()
+            return heuristic_dfs()
 
     def remove_cells(self, n: int) -> None:
         """Remove n cells from the board."""
@@ -753,7 +779,7 @@ class Binairo:
             row, col = random.randint(0, self.board_size - 1), random.randint(0, self.board_size - 1)
             if self.board[row][col] is not None:  # Check if the cell is not already empty
                 original_value = self.board[row][col]
-                self.board[row][col] = None  # Temporarily remove the cell
+                self.board[row][col] = None  
                 
                 # Check if the board is still valid and uniquely solvable
                 if self.is_valid_move(self.board, row, col) and self.solve_binairo():
